@@ -1,4 +1,4 @@
-import React, {useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import { assets, facilityIcons, roomsDummyData } from '../assets/assets'
 import { useNavigate } from 'react-router-dom'
 import StarRating from '../components/StarRating'
@@ -6,7 +6,7 @@ import StarRating from '../components/StarRating'
 const CheckBox = ({label, selected = false, onChange = () => {}}) => {
     return (
         <label className='flex gap-3 items-center cursor-pointer mt-2 text-sm'>
-            <input type="checkbox" checked={selected}  onChange={(e) => onChange(e.target.checked, label)}/>
+            <input type="checkbox" checked={selected}  onChange={onChange}/>
             <span className='font-light select-none'>{label}</span>
         </label>
     )
@@ -14,7 +14,7 @@ const CheckBox = ({label, selected = false, onChange = () => {}}) => {
 const RadioButton = ({label, selected = false, onChange = () => {}}) => {
     return (
         <label className='flex gap-3 items-center cursor-pointer mt-2 text-sm'>
-            <input type="radio" name='sortOption' checked={selected}  onChange={() => onChange(label)}/>
+            <input type="radio" name='sortOption' checked={selected}  onChange={onChange}/>
             <span className='font-light select-none'>{label}</span>
         </label>
     )
@@ -23,6 +23,11 @@ const RadioButton = ({label, selected = false, onChange = () => {}}) => {
 const AllRooms = () => {
     const navigate = useNavigate()
     const [openFilters, setOpenFilters] = useState(false)
+    const [filters, setFilters] = useState({
+        popular: [],
+        priceRange: [],
+        sortBy: null
+    })
 
     const roomTypes = [
         "Single Bed",
@@ -42,6 +47,25 @@ const AllRooms = () => {
         "Newest First"
     ]
 
+    const resetFilters = () => {
+        setFilters({
+            popular: roomTypes.map(type => ({ type, selected: false })),
+            priceRange: priceRanges.map(range => ({ range, selected: false })),
+            sortBy: null
+        })
+    }
+
+    const clearFilers = () => {
+        resetFilters()
+    }
+
+    useEffect(() => {
+        resetFilters()
+    }, [])
+
+    
+
+    console.log(filters)
   return (
     <div className='flex flex-col-reverse lg:flex-row items-start justify-between pt-28 md:pt-35 px-4 md:px-16 lg:px-24 xl:px-32'>
         <div>
@@ -85,26 +109,28 @@ const AllRooms = () => {
                 <div className='text-xs cursor-pointer'>
                     <span onClick={() => setOpenFilters(!openFilters)} className='lg:hidden'>
                         {openFilters ? 'HIDE' : 'SHOW'}</span>
-                    <span className='hidden lg:block'>CLEAR</span>
+                    <span className='hidden lg:block' onClick={() => clearFilers()}>CLEAR</span>
                 </div>
             </div>
             <div className={`${openFilters ? 'h-auto' : 'h-0 lg:h-auto'} overflow-hidden transition-all duration-700`}>
                 <div className='px-5 pt-5'>
                     <p className='font-medium text-gray-800 pb-2'>Popular filters</p>
-                    {roomTypes.map((room, index) => (
-                        <CheckBox key={index} label={room}/>
+                    {filters.popular.map((room, index) => (
+                        <CheckBox key={index} label={room.type} selected={room.selected} 
+                            onChange={(e) => setFilters(prev => ({...prev, popular: prev.popular.map((item, i) => i === index ? {...item, selected: e.target.checked} : item)}))}/>
                     ))}
                 </div>
                 <div className='px-5 pt-5'>
                     <p className='font-medium text-gray-800 pb-2'>Price Range</p>
-                    {priceRanges.map((range, index) => (
-                        <CheckBox key={index} label={`$ ${range}`}/>
+                    {filters.priceRange.map((range, index) => (
+                        <CheckBox key={index} label={`$ ${range.range}`} selected={range.selected}
+                            onChange={(e) => setFilters(prev => ({...prev, priceRange: prev.priceRange.map((item, i) => i === index ? {...item, selected: e.target.checked} : item)}))}/>
                     ))}
                 </div>
                 <div className='px-5 pt-5 pb-7'>
                     <p className='font-medium text-gray-800 pb-2'>Sort By</p>
                     {sortOptions.map((option, index) => (
-                        <RadioButton key={index} label={option}/>
+                        <RadioButton key={index} label={option} selected={filters.sortBy === index} onChange={e => setFilters(prev => ({ ...prev, sortBy: index}))}/>
                     ))}
                 </div>
             </div>
