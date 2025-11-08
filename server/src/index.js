@@ -6,6 +6,8 @@ import morgan from 'morgan';
 import { prisma } from './config/database.js';
 import { clerkAuthMiddleware, requireAuth, optionalAuth } from './middleware/clerkAuth.js';
 import { authorize } from './middleware/authorize.js';
+import { validate } from './middleware/validate.js';
+import { z } from 'zod';
 
 dotenv.config();
 
@@ -137,6 +139,35 @@ app.get('/api/test/admin-or-owner', requireAuth, authorize('ADMIN', 'HOTEL_OWNER
       lastName: req.user.lastName
     },
     requiredRoles: ['ADMIN', 'HOTEL_OWNER'],
+    timestamp: new Date().toISOString()
+  });
+});
+
+const testValidationSchema = z.object({
+  name: z.string().min(3, 'Name must be at least 3 characters'),
+  email: z.string().email('Invalid email format').optional(),
+  age: z.number().int().min(18, 'Must be at least 18 years old').optional()
+});
+
+app.post('/api/test/validate', validate(testValidationSchema), (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Validation passed',
+    data: req.body,
+    timestamp: new Date().toISOString()
+  });
+});
+
+const queryValidationSchema = z.object({
+  search: z.string().min(2, 'Search must be at least 2 characters'),
+  page: z.string().regex(/^\d+$/, 'Page must be a number').optional()
+});
+
+app.get('/api/test/validate-query', validate(queryValidationSchema, 'query'), (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Query validation passed',
+    query: req.query,
     timestamp: new Date().toISOString()
   });
 });
