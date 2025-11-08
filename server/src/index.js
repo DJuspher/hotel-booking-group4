@@ -7,6 +7,16 @@ import { prisma } from './config/database.js';
 import { clerkAuthMiddleware, requireAuth, optionalAuth } from './middleware/clerkAuth.js';
 import { authorize } from './middleware/authorize.js';
 import { validate } from './middleware/validate.js';
+import {
+  errorHandler,
+  notFoundHandler,
+  asyncHandler,
+  ValidationError,
+  AuthenticationError,
+  AuthorizationError,
+  NotFoundError,
+  ConflictError
+} from './middleware/errorHandler.js';
 import { z } from 'zod';
 
 dotenv.config();
@@ -172,28 +182,61 @@ app.get('/api/test/validate-query', validate(queryValidationSchema, 'query'), (r
   });
 });
 
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Route not found',
-    path: req.originalUrl,
-    method: req.method
-  });
+app.get('/api/test/error/generic', (req, res, next) => {
+  const error = new Error('This is a generic server error');
+  next(error);
 });
 
-app.use((err, req, res, next) => {
-  if (NODE_ENV === 'development') {
-    console.error('Error:', err);
-  }
-
-  const statusCode = err.statusCode || err.status || 500;
-
-  res.status(statusCode).json({
-    success: false,
-    error: err.message || 'Internal server error',
-    ...(NODE_ENV === 'development' && { stack: err.stack })
-  });
+app.get('/api/test/error/validation', (req, res, next) => {
+  next(new ValidationError('Invalid input data provided'));
 });
+
+app.get('/api/test/error/auth', (req, res, next) => {
+  next(new AuthenticationError('Invalid or missing authentication token'));
+});
+
+app.get('/api/test/error/forbidden', (req, res, next) => {
+  next(new AuthorizationError('You do not have permission to access this resource'));
+});
+
+app.get('/api/test/error/notfound', (req, res, next) => {
+  next(new NotFoundError('The requested resource was not found'));
+});
+
+app.get('/api/test/error/conflict', (req, res, next) => {
+  next(new ConflictError('Resource already exists'));
+});
+
+app.get('/api/test/error/custom', (req, res, next) => {
+  const error = new Error('Custom error with specific status');
+  error.statusCode = 418;
+  next(error);
+});
+
+app.get('/api/test/error/detailed', (req, res, next) => {
+  const error = new ValidationError('Multiple validation errors');
+  error.details = [
+    { field: 'email', message: 'Invalid email format' },
+    { field: 'age', message: 'Must be at least 18 years old' }
+  ];
+  next(error);
+});
+
+app.get('/api/test/error/async', asyncHandler(async (req, res) => {
+  await new Promise((resolve, reject) => {
+    setTimeout(() => {
+      reject(new Error('Async operation failed'));
+    }, 100);
+  });
+}));
+
+app.get('/api/test/error/database', asyncHandler(async (req, res) => {
+  throw new Error('Database connection failed');
+}));
+
+app.use(notFoundHandler);
+
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log('='.repeat(50));
