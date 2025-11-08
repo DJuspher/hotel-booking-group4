@@ -35,6 +35,13 @@ enum BookingStatus {
   COMPLETED
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
 model User {
   id          String   @id @default(cuid())
   clerkUserId String   @unique
@@ -123,5 +130,19 @@ model Booking {
   property Property @relation(fields: [propertyId], references: [id])
   roomType RoomType @relation(fields: [roomTypeId], references: [id])
 
-  // payment Payment?
+  payment Payment?
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  bookingId       String        @unique
+  xenditInvoiceId String        @unique
+  amount          Float
+  paymentMethod   String?
+  paymentStatus   PaymentStatus @default(PENDING)
+  transactionDate DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
 }
