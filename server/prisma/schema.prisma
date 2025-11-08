@@ -13,6 +13,21 @@ enum Role {
   ADMIN
 }
 
+enum PropertyType {
+  HOTEL
+  RESORT
+  APARTMENT
+  GUESTHOUSE
+}
+
+enum PropertyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PUBLISHED
+  SUSPENDED
+}
+
 model User {
   id          String   @id @default(cuid())
   clerkUserId String   @unique
@@ -23,6 +38,38 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // properties Property[] 
-  // bookings   Booking[]  
+  properties         Property[] @relation("UserProperties")
+  reviewedProperties Property[] @relation("AdminReviews")
+  // bookings   Booking[]
+}
+
+model Property {
+  id              String         @id @default(cuid())
+  ownerId         String
+  name            String
+  description     String         @db.Text
+  propertyType    PropertyType
+  address         String
+  city            String         @default("Cordova, Cebu")
+  latitude        Float
+  longitude       Float
+  contactEmail    String
+  amenities       String[]
+  images          String[]
+  checkInTime     String
+  checkOutTime    String
+  houseRules      String?        @db.Text
+  status          PropertyStatus @default(PENDING)
+  submissionDate  DateTime       @default(now())
+  reviewedDate    DateTime?
+  reviewedById    String?
+  rejectionReason String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  owner      User  @relation("UserProperties", fields: [ownerId], references: [id])
+  reviewedBy User? @relation("AdminReviews", fields: [reviewedById], references: [id])
+
+  // roomTypes RoomType[]
+  // bookings  Booking[]
 }
