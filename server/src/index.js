@@ -19,6 +19,7 @@ import {
 } from './middleware/errorHandler.js';
 import { z } from 'zod';
 import propertyRoutes from './routes/property.routes.js';
+import bookingRoutes from './routes/booking.routes.js';
 
 dotenv.config();
 
@@ -236,6 +237,7 @@ app.get('/api/test/error/database', asyncHandler(async (req, res) => {
 }));
 
 app.use('/api/properties', propertyRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 app.use(notFoundHandler);
 
