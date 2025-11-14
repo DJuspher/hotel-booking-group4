@@ -1,4 +1,5 @@
 import prisma from '../config/database.js';
+import { sendEmail, emailTemplates } from '../services/email.service.js';
 
 export async function searchProperties(req, res) {
   try {
@@ -139,6 +140,22 @@ export async function createProperty(req, res) {
         roomTypes: true
       }
     });
+
+    try {
+      const ownerName = user.firstName && user.lastName
+        ? `${user.firstName} ${user.lastName}`
+        : 'Hotel Owner';
+
+      const emailTemplate = emailTemplates.propertySubmission({
+        ownerName,
+        propertyName: property.name
+      });
+
+      await sendEmail(user.email, emailTemplate);
+      console.log('Property submission confirmation email sent successfully to:', user.email);
+    } catch (emailError) {
+      console.error('Error sending property submission email:', emailError.message);
+    }
 
     return res.status(201).json({
       success: true,

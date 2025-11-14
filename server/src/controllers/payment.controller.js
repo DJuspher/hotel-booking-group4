@@ -1,6 +1,7 @@
 import prisma from '../config/database.js';
 import { createXenditInvoice } from '../services/payment.service.js';
 import { clerkClient } from '@clerk/express';
+import { sendEmail, emailTemplates } from '../services/email.service.js';
 
 export async function createPaymentInvoice(req, res) {
   try {
@@ -195,6 +196,38 @@ export async function handleXenditWebhook(req, res) {
         xenditInvoiceId: id,
         amount: paidAmount
       });
+
+      try {
+        const clerkUser = await clerkClient.users.getUser(payment.booking.user.clerkUserId);
+        const userEmail = clerkUser.emailAddresses[0]?.emailAddress || clerkUser.primaryEmailAddress?.emailAddress;
+        const customerName = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'Valued Customer';
+
+        if (userEmail) {
+          const emailTemplate = emailTemplates.bookingConfirmation({
+            customerName: customerName,
+            bookingId: payment.booking.bookingId,
+            propertyName: payment.booking.property.name,
+            checkInDate: payment.booking.checkInDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+            checkOutDate: payment.booking.checkOutDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+            totalAmount: payment.booking.totalAmount,
+            adults: payment.booking.adults,
+            children: payment.booking.children,
+            numberOfNights: payment.booking.numberOfNights
+          });
+
+          const emailResult = await sendEmail(userEmail, emailTemplate);
+
+          if (emailResult.success) {
+            console.log('Booking confirmation email sent successfully to:', userEmail);
+          } else {
+            console.error('Failed to send booking confirmation email:', emailResult.error);
+          }
+        } else {
+          console.error('User email not found for booking:', payment.booking.bookingId);
+        }
+      } catch (emailError) {
+        console.error('Error sending booking confirmation email:', emailError.message);
+      }
 
     } else if (status === 'EXPIRED' || status === 'FAILED') {
       const payment = await prisma.payment.findUnique({

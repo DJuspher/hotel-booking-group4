@@ -9,8 +9,7 @@
     "start": "node src/index.js",
     "db:push": "npx prisma db push",
     "db:seed": "node prisma/seed.js",
-    "db:studio": "npx prisma studio",
-    "test:xendit": "node test-xendit-setup.js"
+    "db:studio": "npx prisma studio"
   },
   "keywords": [
     "hotel-booking",
@@ -35,6 +34,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "node-fetch": "^3.3.2",
     "nodemon": "^3.0.3",
     "prisma": "^5.9.1"
   }
