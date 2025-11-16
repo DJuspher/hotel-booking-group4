@@ -1,5 +1,6 @@
 import prisma from '../config/database.js';
 import { sendEmail, emailTemplates } from '../services/email.service.js';
+import { NotFoundError } from '../middleware/errorHandler.js';
 
 export async function getPendingProperties(req, res) {
   try {
@@ -29,11 +30,11 @@ export async function getPendingProperties(req, res) {
       data: properties
     });
   } catch (error) {
+    if (error.statusCode) {
+      throw error;
+    }
     console.error('Error in getPendingProperties:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to retrieve pending properties'
-    });
+    throw error;
   }
 }
 
@@ -66,11 +67,11 @@ export async function getAllProperties(req, res) {
       data: properties
     });
   } catch (error) {
+    if (error.statusCode) {
+      throw error;
+    }
     console.error('Error in getAllProperties:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to retrieve properties'
-    });
+    throw error;
   }
 }
 
@@ -94,10 +95,7 @@ export async function approveProperty(req, res) {
     });
 
     if (!property) {
-      return res.status(404).json({
-        success: false,
-        error: 'Property not found'
-      });
+      throw new NotFoundError('Property not found');
     }
 
     const updatedProperty = await prisma.property.update({
@@ -142,11 +140,11 @@ export async function approveProperty(req, res) {
       data: updatedProperty
     });
   } catch (error) {
+    if (error.statusCode) {
+      throw error;
+    }
     console.error('Error in approveProperty:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to approve property'
-    });
+    throw error;
   }
 }
 
@@ -171,10 +169,7 @@ export async function rejectProperty(req, res) {
     });
 
     if (!property) {
-      return res.status(404).json({
-        success: false,
-        error: 'Property not found'
-      });
+      throw new NotFoundError('Property not found');
     }
 
     const updatedProperty = await prisma.property.update({
@@ -221,11 +216,11 @@ export async function rejectProperty(req, res) {
       data: updatedProperty
     });
   } catch (error) {
+    if (error.statusCode) {
+      throw error;
+    }
     console.error('Error in rejectProperty:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to reject property'
-    });
+    throw error;
   }
 }
 
@@ -300,10 +295,10 @@ export async function getAllBookings(req, res) {
       data: bookings
     });
   } catch (error) {
+    if (error.statusCode) {
+      throw error;
+    }
     console.error('Error in getAllBookings:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to retrieve bookings'
-    });
+    throw error;
   }
 }

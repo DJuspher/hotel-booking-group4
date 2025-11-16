@@ -989,10 +989,8 @@ curl -X POST "http://localhost:5000/api/payments/create-invoice" \
 {
   "success": false,
   "error": "An invoice already exists for this booking",
-  "data": {
-    "invoiceId": "6918252b26d6bc37164c2119",
-    "paymentStatus": "PENDING"
-  }
+  "statusCode": 400,
+  "timestamp": "2025-11-16T12:34:56.789Z"
 }
 ```
 
@@ -1465,53 +1463,54 @@ curl -X GET "http://localhost:5000/api/admin/bookings" \
 
 ## Error Handling
 
+### Centralized Error Handling
+
+All errors in the SkyBridge Travels API go through a centralized error handler, ensuring **consistent error response structure** across all endpoints.
+
 ### Standard Error Response Format
 
-Most errors follow this basic format:
-
+**Production Mode:**
 ```json
 {
   "success": false,
-  "error": "Error message description"
+  "error": "Clear, user-friendly error message",
+  "statusCode": 400,
+  "timestamp": "2025-11-16T12:34:56.789Z"
 }
 ```
 
-### Extended Error Formats
-
-Some endpoints provide additional context in error responses:
-
-**With Additional Message:**
+**Development Mode (includes debugging fields):**
 ```json
 {
   "success": false,
-  "error": "Forbidden",
-  "message": "You do not have permission to view this booking"
+  "error": "Clear, user-friendly error message",
+  "statusCode": 400,
+  "timestamp": "2025-11-16T12:34:56.789Z",
+  "errorType": "ValidationError",
+  "path": "/api/bookings",
+  "method": "POST",
+  "stack": [
+    "at Controller.createBooking (/server/src/controllers/booking.controller.js:25:11)",
+    "..."
+  ]
 }
 ```
-Used in: Booking authorization errors
 
-**With Additional Data:**
-```json
-{
-  "success": false,
-  "error": "An invoice already exists for this booking",
-  "data": {
-    "invoiceId": "xnd_...",
-    "paymentStatus": "PENDING"
-  }
-}
-```
-Used in: Payment controller when invoice already exists
+**Required Fields (All Environments):**
+- `success` (boolean, always `false` for errors)
+- `error` (string, human-readable error message)
+- `statusCode` (number, HTTP status code)
+- `timestamp` (string, ISO 8601 format)
 
-**Webhook Processing Errors:**
-```json
-{
-  "success": false,
-  "received": true,
-  "error": "Error processing webhook event"
-}
-```
-Note: Returns status 200 to acknowledge receipt even when processing fails
+**Development-Only Fields:**
+- `errorType` (string, error class name for debugging)
+- `path` (string, API endpoint that failed)
+- `method` (string, HTTP method used)
+- `stack` (array, stack trace for debugging)
+
+**Optional Fields:**
+- `details` (array, field-level validation errors)
+- `data` (object, additional context if applicable)
 
 ### Validation Error Format
 
@@ -1521,6 +1520,8 @@ Validation errors include field-specific details:
 {
   "success": false,
   "error": "Validation failed",
+  "statusCode": 400,
+  "timestamp": "2025-11-16T12:34:56.789Z",
   "details": [
     {
       "field": "email",
@@ -1533,6 +1534,19 @@ Validation errors include field-specific details:
   ]
 }
 ```
+
+### Special Case: Webhook Errors
+
+Webhook endpoints return 200 OK even on errors to prevent retries:
+
+```json
+{
+  "success": false,
+  "received": true,
+  "error": "Error processing webhook event"
+}
+```
+Note: Always returns HTTP 200 to acknowledge receipt
 
 ### HTTP Status Codes
 
@@ -1552,16 +1566,19 @@ Validation errors include field-specific details:
 ```json
 {
   "success": false,
-  "error": "Property is not available for booking"
+  "error": "Property is not available for booking",
+  "statusCode": 400,
+  "timestamp": "2025-11-16T12:34:56.789Z"
 }
 ```
 
-Or with additional message:
+**400 Validation Error:**
 ```json
 {
   "success": false,
-  "error": "Cancellation not allowed",
-  "message": "Bookings can only be cancelled at least 7 days before check-in date"
+  "error": "Bookings can only be cancelled at least 7 days before check-in date",
+  "statusCode": 400,
+  "timestamp": "2025-11-16T12:34:56.789Z"
 }
 ```
 
@@ -1569,43 +1586,61 @@ Or with additional message:
 ```json
 {
   "success": false,
-  "error": "Unauthorized",
-  "message": "Authentication required. Please provide a valid token."
+  "error": "Authentication required. Please provide a valid token.",
+  "statusCode": 401,
+  "timestamp": "2025-11-16T12:34:56.789Z"
 }
 ```
 
-**403 Forbidden:**
+**403 Forbidden (Insufficient Permissions):**
 ```json
 {
   "success": false,
-  "error": "Forbidden",
-  "message": "Access denied. Required role(s): ADMIN. Your role: CUSTOMER"
+  "error": "Access denied. Required role(s): ADMIN. Your role: CUSTOMER",
+  "statusCode": 403,
+  "timestamp": "2025-11-16T12:34:56.789Z"
 }
 ```
 
-Or from booking controllers:
+**403 Forbidden (Resource Access):**
 ```json
 {
   "success": false,
-  "error": "Forbidden",
-  "message": "You do not have permission to cancel this booking"
+  "error": "You do not have permission to cancel this booking",
+  "statusCode": 403,
+  "timestamp": "2025-11-16T12:34:56.789Z"
 }
 ```
 
-**404 Not Found:**
+**404 Not Found (Resource):**
 ```json
 {
   "success": false,
-  "error": "Property not found"
+  "error": "Property not found",
+  "statusCode": 404,
+  "timestamp": "2025-11-16T12:34:56.789Z"
 }
 ```
 
-Or from auth middleware (user not synced):
+**404 Not Found (User Not Synced):**
 ```json
 {
   "success": false,
-  "error": "User Not Found",
-  "message": "Your account was not found in our system. Please sign out and sign in again to sync your account."
+  "error": "Your account was not found in our system. Please sign out and sign in again to sync your account.",
+  "statusCode": 404,
+  "timestamp": "2025-11-16T12:34:56.789Z"
+}
+```
+
+**404 Not Found (Route):**
+```json
+{
+  "success": false,
+  "error": "Route not found",
+  "statusCode": 404,
+  "path": "/api/invalid-endpoint",
+  "method": "GET",
+  "timestamp": "2025-11-16T12:34:56.789Z"
 }
 ```
 
@@ -1613,18 +1648,21 @@ Or from auth middleware (user not synced):
 ```json
 {
   "success": false,
-  "error": "Internal server error"
+  "error": "Internal server error",
+  "statusCode": 500,
+  "timestamp": "2025-11-16T12:34:56.789Z"
 }
 ```
 
-Or from auth middleware:
-```json
-{
-  "success": false,
-  "error": "Internal Server Error",
-  "message": "An error occurred during authorization. Please try again."
-}
-```
+### Security Note
+
+**Production mode** (`NODE_ENV=production`) **never** includes:
+- Stack traces
+- Error types
+- Internal paths
+- Method names
+
+These fields are **only** included in **development mode** for debugging purposes.
 
 ---
 

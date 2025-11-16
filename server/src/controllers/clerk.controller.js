@@ -77,8 +77,9 @@ export async function handleClerkWebhook(req, res) {
   } catch (error) {
     console.error('Clerk webhook processing error:', error);
 
-    return res.status(500).json({
+    return res.status(200).json({
       success: false,
+      received: true,
       error: 'Webhook processing failed'
     });
   }

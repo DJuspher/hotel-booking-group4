@@ -5,6 +5,7 @@ import {
   generateBookingId,
   calculateBookingPrice
 } from '../utils/booking.utils.js';
+import { NotFoundError, ValidationError, AuthorizationError } from '../middleware/errorHandler.js';
 
 export async function createBooking(req, res) {
   try {
@@ -20,26 +21,17 @@ export async function createBooking(req, res) {
     });
 
     if (!property) {
-      return res.status(404).json({
-        success: false,
-        error: 'Property not found'
-      });
+      throw new NotFoundError('Property not found');
     }
 
     if (property.status !== 'PUBLISHED') {
-      return res.status(400).json({
-        success: false,
-        error: 'Property is not available for booking'
-      });
+      throw new ValidationError('Property is not available for booking');
     }
 
     const roomType = property.roomTypes.find(rt => rt.id === roomTypeId);
 
     if (!roomType) {
-      return res.status(404).json({
-        success: false,
-        error: 'Room type not found'
-      });
+      throw new NotFoundError('Room type not found');
     }
 
     const overlappingBookings = await prisma.booking.count({
@@ -54,10 +46,7 @@ export async function createBooking(req, res) {
     });
 
     if (overlappingBookings >= roomType.availableRooms) {
-      return res.status(400).json({
-        success: false,
-        error: 'No rooms available for selected dates'
-      });
+      throw new ValidationError('No rooms available for selected dates');
     }
 
     const numberOfNights = calculateNumberOfNights(checkInDate, checkOutDate);
@@ -112,13 +101,11 @@ export async function createBooking(req, res) {
     });
 
   } catch (error) {
+    if (error.statusCode) {
+      throw error;
+    }
     console.error('Create booking error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to create booking',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    throw error;
   }
 }
 
@@ -129,10 +116,7 @@ export async function getMyBookings(req, res) {
     });
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
+      throw new NotFoundError('User not found');
     }
 
     const bookings = await prisma.booking.findMany({
@@ -178,11 +162,11 @@ export async function getMyBookings(req, res) {
     });
 
   } catch (error) {
+    if (error.statusCode) {
+      throw error;
+    }
     console.error('Get my bookings error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to retrieve bookings'
-    });
+    throw error;
   }
 }
 
@@ -233,10 +217,7 @@ export async function getBookingById(req, res) {
     });
 
     if (!booking) {
-      return res.status(404).json({
-        success: false,
-        error: 'Booking not found'
-      });
+      throw new NotFoundError('Booking not found');
     }
 
     const currentUser = await prisma.user.findUnique({
@@ -244,21 +225,14 @@ export async function getBookingById(req, res) {
     });
 
     if (!currentUser) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
+      throw new NotFoundError('User not found');
     }
 
     const isOwner = booking.userId === currentUser.id;
     const isAdmin = currentUser.role === 'ADMIN';
 
     if (!isOwner && !isAdmin) {
-      return res.status(403).json({
-        success: false,
-        error: 'Forbidden',
-        message: 'You do not have permission to view this booking'
-      });
+      throw new AuthorizationError('You do not have permission to view this booking');
     }
 
     return res.status(200).json({
@@ -267,11 +241,11 @@ export async function getBookingById(req, res) {
     });
 
   } catch (error) {
+    if (error.statusCode) {
+      throw error;
+    }
     console.error('Get booking by ID error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to retrieve booking'
-    });
+    throw error;
   }
 }
 
@@ -288,10 +262,7 @@ export async function cancelBooking(req, res) {
     });
 
     if (!booking) {
-      return res.status(404).json({
-        success: false,
-        error: 'Booking not found'
-      });
+      throw new NotFoundError('Booking not found');
     }
 
     const currentUser = await prisma.user.findUnique({
@@ -299,25 +270,15 @@ export async function cancelBooking(req, res) {
     });
 
     if (!currentUser) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
+      throw new NotFoundError('User not found');
     }
 
     if (booking.userId !== currentUser.id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Forbidden',
-        message: 'You do not have permission to cancel this booking'
-      });
+      throw new AuthorizationError('You do not have permission to cancel this booking');
     }
 
     if (booking.bookingStatus === 'CANCELLED') {
-      return res.status(400).json({
-        success: false,
-        error: 'Booking is already cancelled'
-      });
+      throw new ValidationError('Booking is already cancelled');
     }
 
     const today = new Date();
@@ -325,11 +286,7 @@ export async function cancelBooking(req, res) {
     const daysUntilCheckIn = Math.ceil((checkInDate - today) / (1000 * 60 * 60 * 24));
 
     if (daysUntilCheckIn < 7) {
-      return res.status(400).json({
-        success: false,
-        error: 'Cancellation not allowed',
-        message: 'Bookings can only be cancelled at least 7 days before check-in date'
-      });
+      throw new ValidationError('Bookings can only be cancelled at least 7 days before check-in date');
     }
 
     const updatedBooking = await prisma.booking.update({
@@ -377,10 +334,10 @@ export async function cancelBooking(req, res) {
     });
 
   } catch (error) {
+    if (error.statusCode) {
+      throw error;
+    }
     console.error('Cancel booking error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to cancel booking'
-    });
+    throw error;
   }
 }

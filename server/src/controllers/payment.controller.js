@@ -2,16 +2,14 @@ import prisma from '../config/database.js';
 import { createXenditInvoice } from '../services/payment.service.js';
 import { clerkClient } from '@clerk/express';
 import { sendEmail, emailTemplates } from '../services/email.service.js';
+import { NotFoundError, ValidationError, AuthorizationError } from '../middleware/errorHandler.js';
 
 export async function createPaymentInvoice(req, res) {
   try {
     const { bookingId } = req.body;
 
     if (!bookingId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Booking ID is required'
-      });
+      throw new ValidationError('Booking ID is required');
     }
 
     const booking = await prisma.booking.findUnique({
@@ -25,36 +23,20 @@ export async function createPaymentInvoice(req, res) {
     });
 
     if (!booking) {
-      return res.status(404).json({
-        success: false,
-        error: 'Booking not found'
-      });
+      throw new NotFoundError('Booking not found');
     }
 
     if (booking.user.clerkUserId !== req.auth.userId) {
-      return res.status(403).json({
-        success: false,
-        error: 'You are not authorized to create an invoice for this booking'
-      });
+      throw new AuthorizationError('You are not authorized to create an invoice for this booking');
     }
 
     if (booking.payment) {
       if (booking.payment.paymentStatus === 'PAID') {
-        return res.status(400).json({
-          success: false,
-          error: 'This booking has already been paid'
-        });
+        throw new ValidationError('This booking has already been paid');
       }
 
       if (booking.payment.paymentStatus === 'PENDING' || booking.payment.paymentStatus === 'FAILED') {
-        return res.status(400).json({
-          success: false,
-          error: 'An invoice already exists for this booking',
-          data: {
-            invoiceId: booking.payment.xenditInvoiceId,
-            paymentStatus: booking.payment.paymentStatus
-          }
-        });
+        throw new ValidationError('An invoice already exists for this booking');
       }
     }
 
@@ -62,10 +44,7 @@ export async function createPaymentInvoice(req, res) {
     const userEmail = clerkUser.emailAddresses[0]?.emailAddress || clerkUser.primaryEmailAddress?.emailAddress;
 
     if (!userEmail) {
-      return res.status(400).json({
-        success: false,
-        error: 'User email not found. Please update your profile.'
-      });
+      throw new ValidationError('User email not found. Please update your profile.');
     }
 
     const description = `Hotel Booking - ${booking.property.name} (${booking.roomType.name})`;
@@ -103,13 +82,11 @@ export async function createPaymentInvoice(req, res) {
     });
 
   } catch (error) {
+    if (error.statusCode) {
+      throw error;
+    }
     console.error('Create Payment Invoice Error:', error);
-
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to create payment invoice',
-      message: error.message
-    });
+    throw error;
   }
 }
 
