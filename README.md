@@ -1,41 +1,39 @@
-HOTEK BOOKING GROUP 4 MINI CAPSTONE
+HOTEL BOOKING — GROUP 4 MINI CAPSTONE
+Project Installation Guide
+🔧 Prerequisites
+1. Git
 
-
-PROJECT INSTALLATION GUIDE HOTEL BOOKING
-
-PREREQUISITES
-
-1.GIT 
+Check if Git is installed:
 
 git --version
 
-if not install https://git-scm.com/install/
 
-INSTALLATION STEPS
+If not installed, download here:
+https://git-scm.com/install/
 
-Step 1 : Create a Project 
+📥 Installation Steps
+Step 1: Create a Project Directory
+mkdir my-project   # or any folder name you prefer
+cd my-project
 
-mkdir my-project (anyname)
-cd my-project 
+Step 2: Clone the Repository
+git clone https://github.com/DJuspher/hotel-booking-group4.git
 
-Step 2 : CLone the Repository
 
-https://github.com/DJuspher/hotel-booking-group4.git
+This will create a new directory containing client and server folders.
 
-This will create a new folder with client/sever.
+🔐 Step 3: Install Clerk (Client Setup)
+1. Navigate to the Client Folder:
+cd hotel-booking-group4/client
 
-Step 3 : Install Clerk 
-
-1. Navigate Client:
-cd Client
-
-2.Install dependencies:
+2. Install Clerk Dependency:
 npm install @clerk/clerk-react
 
-3.Create a .env file inside client/:
+3. Create a .env File Inside /client:
+
+Add the following key:
+
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_Z3JlYXQtc3BpZGVyLTI5LmNsZXJrLmFjY291bnRzLmRldiQ
 
-4.Start the client server :
+4. Start the Client Development Server:
 npm run dev
-
-
