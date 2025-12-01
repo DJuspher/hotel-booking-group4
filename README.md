@@ -1,4 +1,5 @@
 HOTEL BOOKING — GROUP 4 MINI CAPSTONE
+
 Project Installation Guide
 🔧 Prerequisites
 1. Git
